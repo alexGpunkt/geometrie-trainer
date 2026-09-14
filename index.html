@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Vermessungswerkstatt · Geometrie-Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f2942;
+    --bg-deep:#0a1e33;
+    --grid-line:#1c3d5c;
+    --panel:#153859;
+    --panel-2:#194266;
+    --line:#2c5478;
+    --ink:#eaf2fa;
+    --ink-dim:#9fb8cf;
+    --amber:#f2a65a;
+    --amber-dim:#c9853f;
+    --cyan:#6fc3df;
+    --ok:#7fcf9b;
+    --ok-bg:#173d2c;
+    --bad:#e2726b;
+    --bad-bg:#3d1f1e;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{
+    height:100%; width:100%; margin:0; padding:0;
+    overflow:hidden; overscroll-behavior:none;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Space Grotesk',system-ui,sans-serif;
+  }
+  body{
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:28px 28px;
+    background-position:center;
+  }
+  #app{
+    height:100dvh; height:100vh; width:100dvw;
+    display:flex; flex-direction:column;
+    max-width:560px; margin:0 auto;
+    position:relative;
+  }
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    display:flex; align-items:center; gap:12px;
+    padding:14px 14px 10px;
+    flex:0 0 auto;
+  }
+  .burger{
+    width:42px; height:42px; flex:0 0 auto;
+    border:1px solid var(--line); border-radius:8px;
+    background:var(--panel);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    cursor:pointer;
+  }
+  .burger span{width:18px; height:2px; background:var(--amber); display:block;}
+  .title-block{display:flex; flex-direction:column; line-height:1.15; min-width:0;}
+  .title-block .app-name{font-weight:700; font-size:1.05rem; letter-spacing:.2px;}
+  .title-block .topic-name{
+    font-family:'JetBrains Mono',monospace; font-size:.75rem; color:var(--cyan);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  /* ---------- Stage ---------- */
+  .stage{
+    flex:1 1 auto; min-height:0;
+    display:flex; flex-direction:column;
+    padding:6px 16px;
+    gap:8px;
+    overflow:hidden;
+  }
+  .plate{
+    position:relative;
+    flex:1 1 auto; min-height:0;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    display:flex; align-items:center; justify-content:center;
+    padding:8px;
+    overflow:hidden;
+  }
+  .plate::before,.plate::after,
+  .plate .cm-tl,.plate .cm-br{
+    content:''; position:absolute; width:14px; height:14px; pointer-events:none;
+  }
+  .plate::before{ top:-1px; left:-1px; border-top:2px solid var(--amber); border-left:2px solid var(--amber); }
+  .plate::after{ bottom:-1px; right:-1px; border-bottom:2px solid var(--amber); border-right:2px solid var(--amber); }
+  #diagram{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+  #diagram svg{ width:100%; height:100%; max-height:100%; }
+
+  .task-text{
+    flex:0 0 auto;
+    font-size:1rem; line-height:1.4;
+    padding:2px 2px 4px;
+  }
+  .task-text .badge{
+    font-family:'JetBrains Mono',monospace; font-size:.72rem;
+    color:var(--bg); background:var(--amber);
+    border-radius:5px; padding:2px 7px; margin-right:8px;
+    display:inline-block; font-weight:700; letter-spacing:.3px;
+  }
+
+  /* ---------- Controls ---------- */
+  .controls{
+    flex:0 0 auto;
+    padding:8px 16px 14px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .answer-row{
+    display:flex; align-items:stretch; gap:8px;
+  }
+  .answer-row input{
+    flex:1 1 auto; min-width:0;
+    font-family:'JetBrains Mono',monospace; font-size:1.15rem;
+    background:var(--panel-2); color:var(--ink);
+    border:1px solid var(--line); border-radius:8px;
+    padding:10px 12px;
+  }
+  .answer-row input:focus{ outline:none; border-color:var(--amber); }
+  .unit-badge{
+    flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:.9rem;
+    color:var(--ink-dim); background:var(--bg-deep);
+    border:1px solid var(--line); border-radius:8px;
+    padding:0 12px; min-width:44px;
+  }
+  .feedback{
+    min-height:20px;
+    font-size:.85rem; font-family:'JetBrains Mono',monospace;
+    padding:0 2px;
+  }
+  .feedback.ok{ color:var(--ok); }
+  .feedback.bad{ color:var(--bad); }
+
+  .btn-row{ display:flex; gap:8px; }
+  button{
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:.9rem;
+    border-radius:8px; border:1px solid transparent;
+    padding:11px 10px; cursor:pointer;
+    -webkit-user-select:none; user-select:none;
+  }
+  .btn-row button{ flex:1 1 0; }
+  .btn-primary{ background:var(--amber); color:#1b1200; }
+  .btn-primary:active{ background:var(--amber-dim); }
+  .btn-outline{ background:transparent; color:var(--ink); border:1px solid var(--line); }
+  .btn-outline:active{ background:var(--panel-2); }
+  .btn-ghost{ background:var(--panel); color:var(--ink-dim); border:1px solid var(--line); }
+  .btn-ghost:active{ background:var(--panel-2); }
+
+  /* ---------- Drawer ---------- */
+  .backdrop{
+    position:fixed; inset:0; background:rgba(6,16,28,.55);
+    opacity:0; pointer-events:none; transition:opacity .18s ease;
+    z-index:20;
+  }
+  .backdrop.show{ opacity:1; pointer-events:auto; }
+
+  .drawer{
+    position:fixed; top:0; left:0; height:100dvh; height:100vh; width:82%; max-width:320px;
+    background:var(--bg-deep); border-right:1px solid var(--line);
+    transform:translateX(-105%); transition:transform .2s ease;
+    z-index:21; display:flex; flex-direction:column;
+    padding:18px 14px; gap:14px;
+  }
+  .drawer.open{ transform:translateX(0); }
+  .drawer h2{
+    font-size:.72rem; text-transform:none; letter-spacing:.3px;
+    color:var(--ink-dim); margin:6px 4px 0; font-weight:600;
+  }
+  .drawer .topic-list{ display:flex; flex-direction:column; gap:6px; }
+  .topic-item{
+    text-align:left; background:var(--panel); color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+    font-size:.88rem; font-weight:500;
+  }
+  .topic-item.active{ border-color:var(--amber); color:var(--amber); }
+  .drawer .tools{ display:flex; flex-direction:column; gap:6px; margin-top:auto; }
+  .drawer .tools button{ text-align:left; background:var(--panel-2); border:1px solid var(--line); color:var(--ink); }
+
+  /* ---------- Overlays ---------- */
+  .overlay{
+    position:fixed; inset:0; z-index:30;
+    display:flex; align-items:flex-end; justify-content:center;
+    background:rgba(6,16,28,.6);
+    opacity:0; pointer-events:none; transition:opacity .18s ease;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+  .sheet{
+    width:100%; max-width:560px; max-height:88vh;
+    background:var(--bg-deep); border:1px solid var(--line); border-bottom:none;
+    border-radius:16px 16px 0 0;
+    padding:16px 18px calc(16px + env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; gap:12px;
+    transform:translateY(12px); transition:transform .18s ease;
+    overflow:hidden;
+  }
+  .overlay.show .sheet{ transform:translateY(0); }
+  .sheet-head{ display:flex; align-items:center; justify-content:space-between; }
+  .sheet-head h3{ margin:0; font-size:1rem; }
+  .sheet-close{ background:var(--panel); border:1px solid var(--line); color:var(--ink-dim); width:32px; height:32px; border-radius:8px; padding:0; }
+
+  /* steps */
+  .steps-list{ display:flex; flex-direction:column; gap:8px; overflow-y:auto; }
+  .step-line{
+    display:flex; gap:10px; align-items:flex-start;
+    font-size:.92rem; line-height:1.4;
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding:9px 11px;
+  }
+  .step-line .num{
+    font-family:'JetBrains Mono',monospace; color:var(--amber); font-weight:700;
+    flex:0 0 auto;
+  }
+
+  /* calculator */
+  .calc-display{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
+    padding:14px 14px; text-align:right;
+    font-family:'JetBrains Mono',monospace; font-size:1.6rem;
+    overflow-x:auto; white-space:nowrap;
+  }
+  .calc-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .calc-grid button{ padding:14px 0; font-size:1.05rem; font-family:'JetBrains Mono',monospace; background:var(--panel); border:1px solid var(--line); color:var(--ink); }
+  .calc-grid button.op{ background:var(--amber-dim); color:#1b1200; }
+  .calc-grid button.eq{ background:var(--amber); color:#1b1200; }
+  .calc-grid button.clear{ color:var(--bad); }
+
+  /* qr */
+  .qr-row{ display:flex; gap:8px; }
+  .qr-row input{
+    flex:1 1 auto; min-width:0; font-family:'JetBrains Mono',monospace; font-size:.85rem;
+    background:var(--panel-2); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  }
+  #qrBox{
+    align-self:center; background:#fff; padding:10px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center; min-height:170px; min-width:170px;
+  }
+  #qrBox .qr-hint{ font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#0f2942; text-align:center; max-width:150px; }
+
+  ::selection{ background:var(--amber); color:#1b1200; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="topbar">
+    <button class="burger" id="burgerBtn" aria-label="Menü öffnen"><span></span><span></span><span></span></button>
+    <div class="title-block">
+      <span class="app-name">Vermessungswerkstatt</span>
+      <span class="topic-name" id="topicName">—</span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="plate"><div id="diagram"></div></div>
+    <div class="task-text" id="taskPrompt"></div>
+  </div>
+
+  <div class="controls">
+    <div class="answer-row">
+      <input id="answerInput" type="text" inputmode="decimal" placeholder="Deine Lösung …" autocomplete="off">
+      <span class="unit-badge" id="unitBadge"></span>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="btn-row">
+      <button class="btn-primary" id="checkBtn">Prüfen</button>
+      <button class="btn-outline" id="stepsBtn">Lösungsweg</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-ghost" id="sameTypeBtn">Weitere Aufgabe (gleicher Typ)</button>
+      <button class="btn-ghost" id="randomBtn">Neues Thema</button>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+
+<nav class="drawer" id="drawer">
+  <h2>Themen wählen</h2>
+  <div class="topic-list" id="topicList"></div>
+  <div class="tools">
+    <h2>Werkzeuge</h2>
+    <button id="openCalc">🧮 Taschenrechner</button>
+    <button id="openQr">▦ QR-Code zur Website</button>
+  </div>
+</nav>
+
+<div class="overlay" id="stepsOverlay">
+  <div class="sheet">
+    <div class="sheet-head"><h3>Lösungsweg</h3><button class="sheet-close" data-close="stepsOverlay">✕</button></div>
+    <div class="steps-list" id="stepsList"></div>
+    <button class="btn-primary" id="revealBtn">Nächster Schritt</button>
+  </div>
+</div>
+
+<div class="overlay" id="calcOverlay">
+  <div class="sheet">
+    <div class="sheet-head"><h3>Taschenrechner</h3><button class="sheet-close" data-close="calcOverlay">✕</button></div>
+    <div class="calc-display" id="calcDisplay">0</div>
+    <div class="calc-grid" id="calcGrid"></div>
+  </div>
+</div>
+
+<div class="overlay" id="qrOverlay">
+  <div class="sheet">
+    <div class="sheet-head"><h3>QR-Code zur Website</h3><button class="sheet-close" data-close="qrOverlay">✕</button></div>
+    <div class="qr-row">
+      <input id="qrUrl" type="text" value="">
+      <button class="btn-primary" id="qrGen" style="flex:0 0 auto;">Erzeugen</button>
+    </div>
+    <div id="qrBox"><span class="qr-hint">Klicke auf „Erzeugen“, um den QR-Code für die obige Adresse zu erstellen.</span></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ============ Helpers ============ */
+  const $ = (id) => document.getElementById(id);
+  const rnd = (min,max) => Math.floor(Math.random()*(max-min+1))+min;
+  const pick = (arr) => arr[Math.floor(Math.random()*arr.length)];
+
+  function fmt(x){
+    let r = Math.round((x + Number.EPSILON) * 1e6) / 1e6;
+    let s = r.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+    if (s === '' || s === '-0') s = '0';
+    return s.replace('.', ',');
+  }
+  function parseInput(str){
+    if(!str) return NaN;
+    const cleaned = str.trim().replace(/\s/g,'').replace(',', '.');
+    if(!/^-?\d+(\.\d+)?$/.test(cleaned)) return NaN;
+    return parseFloat(cleaned);
+  }
+  function tol(expected){
+    return Math.max(0.05, Math.abs(expected) * 0.01);
+  }
+  function svg(inner, viewBox){
+    return `<svg viewBox="${viewBox||'0 0 300 220'}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#6fc3df"/>
+        </marker>
+      </defs>
+      ${inner}
+    </svg>`;
+  }
+  function dimLineH(x1,x2,y,label){
+    return `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#6fc3df" stroke-width="1.4" stroke-dasharray="4 3" marker-start="url(#arw)" marker-end="url(#arw)"/>
+      <text x="${(x1+x2)/2}" y="${y-8}" fill="#6fc3df" font-family="JetBrains Mono, monospace" font-size="13" text-anchor="middle">${label}</text>`;
+  }
+  function dimLineV(y1,y2,x,label){
+    return `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#6fc3df" stroke-width="1.4" stroke-dasharray="4 3" marker-start="url(#arw)" marker-end="url(#arw)"/>
+      <text x="${x-10}" y="${(y1+y2)/2}" fill="#6fc3df" font-family="JetBrains Mono, monospace" font-size="13" text-anchor="middle" transform="rotate(-90 ${x-10} ${(y1+y2)/2})">${label}</text>`;
+  }
+
+  /* ============ Diagrams ============ */
+  function svgSquareDiagram(sideLabel, note){
+    const s = 130, x0 = 90, y0 = 40;
+    return svg(`
+      <rect x="${x0}" y="${y0}" width="${s}" height="${s}" fill="#194266" stroke="#f2a65a" stroke-width="2"/>
+      ${dimLineH(x0, x0+s, y0-14, sideLabel)}
+      ${dimLineV(y0, y0+s, x0-14, sideLabel)}
+      ${note ? `<text x="${x0+s/2}" y="${y0+s/2+5}" fill="#eaf2fa" font-family="Space Grotesk, sans-serif" font-size="14" text-anchor="middle">${note}</text>` : ''}
+    `);
+  }
+  function svgRectDiagram(w,h,labelW,labelH,note){
+    const maxW = 190, maxH = 130;
+    const scale = Math.min(maxW/w, maxH/h);
+    const rw = w*scale, rh = h*scale;
+    const x0 = (300-rw)/2, y0 = 40 + (130-rh)/2;
+    return svg(`
+      <rect x="${x0}" y="${y0}" width="${rw}" height="${rh}" fill="#194266" stroke="#f2a65a" stroke-width="2"/>
+      ${dimLineH(x0, x0+rw, y0-14, labelW)}
+      ${dimLineV(y0, y0+rh, x0-14, labelH)}
+      ${note ? `<text x="${x0+rw/2}" y="${y0+rh/2+5}" fill="#eaf2fa" font-family="Space Grotesk, sans-serif" font-size="14" text-anchor="middle">${note}</text>` : ''}
+    `);
+  }
+  function svgCompositeDiagram(W,H,nw,nh){
+    const maxW = 190, maxH = 130;
+    const scale = Math.min(maxW/W, maxH/H);
+    const x0 = (300-W*scale)/2, y0 = 40 + (130-H*scale)/2;
+    const w = W*scale, h = H*scale, cutW = nw*scale, cutH = nh*scale;
+    // L shape: big rect minus top-right notch
+    const path = `M ${x0} ${y0} L ${x0+w-cutW} ${y0} L ${x0+w-cutW} ${y0+cutH} L ${x0+w} ${y0+cutH} L ${x0+w} ${y0+h} L ${x0} ${y0+h} Z`;
+    return svg(`
+      <path d="${path}" fill="#194266" stroke="#f2a65a" stroke-width="2"/>
+      <line x1="${x0}" y1="${y0+cutH}" x2="${x0+w-cutW}" y2="${y0+cutH}" stroke="#f2a65a" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>
+      ${dimLineH(x0, x0+w, y0-14, W+' cm')}
+      ${dimLineV(y0, y0+h, x0-14, H+' cm')}
+      ${dimLineH(x0+w-cutW, x0+w, y0+cutH+16, nw+' cm')}
+      ${dimLineV(y0, y0+cutH, x0+w+14, nh+' cm')}
+    `);
+  }
+  function svgIcon(kind){
+    if(kind === 'length'){
+      return svg(`
+        <line x1="55" y1="110" x2="245" y2="110" stroke="#f2a65a" stroke-width="3"/>
+        ${[0,1,2,3,4,5,6,7,8].map(i=>`<line x1="${55+i*23.75}" y1="${i%3===0?96:103}" x2="${55+i*23.75}" y2="110" stroke="#6fc3df" stroke-width="2"/>`).join('')}
+        <rect x="50" y="95" width="200" height="30" fill="none" stroke="#6fc3df" stroke-width="1.4" stroke-dasharray="3 3"/>
+      `);
+    }
+    return svg(`
+      <rect x="70" y="45" width="160" height="120" fill="none" stroke="#f2a65a" stroke-width="2"/>
+      ${[1,2,3].map(i=>`<line x1="${70+i*40}" y1="45" x2="${70+i*40}" y2="165" stroke="#6fc3df" stroke-width="1" stroke-dasharray="2 3"/>`).join('')}
+      ${[1,2].map(i=>`<line x1="70" y1="${45+i*40}" x2="230" y2="${45+i*40}" stroke="#6fc3df" stroke-width="1" stroke-dasharray="2 3"/>`).join('')}
+    `);
+  }
+
+  /* ============ Units ============ */
+  const LEN_UNITS = [
+    {k:'mm', e:-3}, {k:'cm', e:-2}, {k:'dm', e:-1}, {k:'m', e:0}, {k:'km', e:3}
+  ];
+  const AREA_UNITS = [
+    {k:'mm²', e:-6}, {k:'cm²', e:-4}, {k:'dm²', e:-2}, {k:'m²', e:0}, {k:'a', e:2}, {k:'ha', e:4}, {k:'km²', e:6}
+  ];
+
+  function pickUnitPair(units, maxDist){
+    let i,j;
+    do{
+      i = rnd(0, units.length-1);
+      j = rnd(0, units.length-1);
+    } while(i===j || Math.abs(i-j) > maxDist);
+    return [units[i], units[j]];
+  }
+
+  /* ============ Task generators ============ */
+  function genLaengeUmrechnen(){
+    const [from, to] = pickUnitPair(LEN_UNITS, 3);
+    const base = rnd(1, 800) * (Math.random() < 0.25 ? 0.1 : 1);
+    const value = Math.round(base*10)/10;
+    const factor = Math.pow(10, from.e - to.e);
+    const answer = value * factor;
+    return {
+      topicId:'laenge_umrechnen',
+      prompt: `Rechne um: ${fmt(value)} ${from.k} = ? ${to.k}`,
+      unit: to.k,
+      answer, tolerance: tol(answer),
+      steps: [
+        `1 ${from.k} entspricht ${fmt(factor)} ${to.k}.`,
+        `Rechnung: ${fmt(value)} ${from.k} × ${fmt(factor)} = ${fmt(answer)} ${to.k}.`,
+        `Ergebnis: ${fmt(value)} ${from.k} = ${fmt(answer)} ${to.k}.`
+      ],
+      diagram: svgIcon('length')
+    };
+  }
+
+  function genFlaecheUmrechnen(){
+    const [from, to] = pickUnitPair(AREA_UNITS, 2);
+    const value = rnd(1, 600);
+    const factor = Math.pow(10, from.e - to.e);
+    const answer = value * factor;
+    return {
+      topicId:'flaeche_umrechnen',
+      prompt: `Rechne um: ${fmt(value)} ${from.k} = ? ${to.k}`,
+      unit: to.k,
+      answer, tolerance: tol(answer),
+      steps: [
+        `1 ${from.k} entspricht ${fmt(factor)} ${to.k}.`,
+        `Rechnung: ${fmt(value)} ${from.k} × ${fmt(factor)} = ${fmt(answer)} ${to.k}.`,
+        `Ergebnis: ${fmt(value)} ${from.k} = ${fmt(answer)} ${to.k}.`
+      ],
+      diagram: svgIcon('area')
+    };
+  }
+
+  function genUmfangQuadrat(inverse){
+    const a = rnd(3, 45);
+    const U = 4*a;
+    if(!inverse){
+      return {
+        topicId:'umfang_quadrat',
+        prompt:`Ein Quadrat hat die Seitenlänge a = ${a} cm. Berechne den Umfang U.`,
+        unit:'cm', answer:U, tolerance: tol(U),
+        steps:[`Formel: U = 4 · a`, `Einsetzen: U = 4 · ${a} cm`, `Ergebnis: U = ${U} cm`],
+        diagram: svgSquareDiagram(a+' cm')
+      };
+    }
+    return {
+      topicId:'umfang_quadrat',
+      prompt:`Ein Quadrat hat den Umfang U = ${U} cm. Berechne die Seitenlänge a.`,
+      unit:'cm', answer:a, tolerance: tol(a),
+      steps:[`Formel: U = 4 · a, umgestellt: a = U ÷ 4`, `Einsetzen: a = ${U} cm ÷ 4`, `Ergebnis: a = ${a} cm`],
+      diagram: svgSquareDiagram('?', `U = ${U} cm`)
+    };
+  }
+
+  function genFlaecheQuadrat(inverse){
+    const a = rnd(2, 28);
+    const A = a*a;
+    if(!inverse){
+      return {
+        topicId:'flaeche_quadrat',
+        prompt:`Ein Quadrat hat die Seitenlänge a = ${a} cm. Berechne den Flächeninhalt A.`,
+        unit:'cm²', answer:A, tolerance: tol(A),
+        steps:[`Formel: A = a · a`, `Einsetzen: A = ${a} cm · ${a} cm`, `Ergebnis: A = ${A} cm²`],
+        diagram: svgSquareDiagram(a+' cm')
+      };
+    }
+    return {
+      topicId:'flaeche_quadrat',
+      prompt:`Ein Quadrat hat den Flächeninhalt A = ${A} cm². Berechne die Seitenlänge a.`,
+      unit:'cm', answer:a, tolerance: tol(a),
+      steps:[`Formel: A = a · a, umgestellt: a = √A`, `Einsetzen: a = √${A} cm²`, `Ergebnis: a = ${a} cm`],
+      diagram: svgSquareDiagram('?', `A = ${A} cm²`)
+    };
+  }
+
+  function genUmfangRechteck(inverse){
+    const a = rnd(3, 30), b = rnd(3, 30);
+    const U = 2*(a+b);
+    if(!inverse){
+      return {
+        topicId:'umfang_rechteck',
+        prompt:`Ein Rechteck hat die Seiten a = ${a} cm und b = ${b} cm. Berechne den Umfang U.`,
+        unit:'cm', answer:U, tolerance: tol(U),
+        steps:[`Formel: U = 2 · (a + b)`, `Einsetzen: U = 2 · (${a} cm + ${b} cm)`, `Ergebnis: U = ${U} cm`],
+        diagram: svgRectDiagram(a,b,a+' cm', b+' cm')
+      };
+    }
+    return {
+      topicId:'umfang_rechteck',
+      prompt:`Ein Rechteck hat den Umfang U = ${U} cm und die Seite a = ${a} cm. Berechne die Seite b.`,
+      unit:'cm', answer:b, tolerance: tol(b),
+      steps:[`Formel: U = 2 · (a + b), umgestellt: b = U ÷ 2 − a`, `Einsetzen: b = ${U} cm ÷ 2 − ${a} cm`, `Ergebnis: b = ${b} cm`],
+      diagram: svgRectDiagram(a,b,a+' cm', '?', `U = ${U} cm`)
+    };
+  }
+
+  function genFlaecheRechteck(inverse){
+    const a = rnd(3, 25), b = rnd(3, 25);
+    const A = a*b;
+    if(!inverse){
+      return {
+        topicId:'flaeche_rechteck',
+        prompt:`Ein Rechteck hat die Seiten a = ${a} cm und b = ${b} cm. Berechne den Flächeninhalt A.`,
+        unit:'cm²', answer:A, tolerance: tol(A),
+        steps:[`Formel: A = a · b`, `Einsetzen: A = ${a} cm · ${b} cm`, `Ergebnis: A = ${A} cm²`],
+        diagram: svgRectDiagram(a,b,a+' cm', b+' cm')
+      };
+    }
+    return {
+      topicId:'flaeche_rechteck',
+      prompt:`Ein Rechteck hat den Flächeninhalt A = ${A} cm² und die Seite a = ${a} cm. Berechne die Seite b.`,
+      unit:'cm', answer:b, tolerance: tol(b),
+      steps:[`Formel: A = a · b, umgestellt: b = A ÷ a`, `Einsetzen: b = ${A} cm² ÷ ${a} cm`, `Ergebnis: b = ${b} cm`],
+      diagram: svgRectDiagram(a,b,a+' cm', '?', `A = ${A} cm²`)
+    };
+  }
+
+  function genZusammengesetzt(){
+    const W = rnd(9, 16), H = rnd(8, 15);
+    const nw = rnd(2, W-4), nh = rnd(2, H-4);
+    const A1 = W*(H-nh);
+    const A2 = (W-nw)*nh;
+    const A = A1 + A2;
+    return {
+      topicId:'zusammengesetzt',
+      prompt:`Berechne den Flächeninhalt der zusammengesetzten Figur (Maße in cm).`,
+      unit:'cm²', answer:A, tolerance: tol(A),
+      steps:[
+        `Zerlege die Figur in zwei Rechtecke: unten (${W} cm × ${H-nh} cm) und oben (${W-nw} cm × ${nh} cm).`,
+        `Fläche unten: A₁ = ${W} cm · ${H-nh} cm = ${A1} cm²`,
+        `Fläche oben: A₂ = ${W-nw} cm · ${nh} cm = ${A2} cm²`,
+        `Gesamtfläche: A = A₁ + A₂ = ${A1} cm² + ${A2} cm² = ${A} cm²`
+      ],
+      diagram: svgCompositeDiagram(W,H,nw,nh)
+    };
+  }
+
+  const TOPICS = [
+    {id:'laenge_umrechnen',   label:'Längen umrechnen',            gen: () => genLaengeUmrechnen()},
+    {id:'flaeche_umrechnen',  label:'Flächen umrechnen',            gen: () => genFlaecheUmrechnen()},
+    {id:'umfang_quadrat',     label:'Umfang Quadrat',               gen: () => genUmfangQuadrat(Math.random() < 0.4)},
+    {id:'flaeche_quadrat',    label:'Flächeninhalt Quadrat',        gen: () => genFlaecheQuadrat(Math.random() < 0.4)},
+    {id:'umfang_rechteck',    label:'Umfang Rechteck',              gen: () => genUmfangRechteck(Math.random() < 0.4)},
+    {id:'flaeche_rechteck',   label:'Flächeninhalt Rechteck',       gen: () => genFlaecheRechteck(Math.random() < 0.4)},
+    {id:'zusammengesetzt',    label:'Zusammengesetzte Figuren',     gen: () => genZusammengesetzt()}
+  ];
+
+  /* ============ App state ============ */
+  let currentTopicId = null;
+  let currentTask = null;
+  let revealedSteps = 0;
+
+  const diagram = $('diagram'), taskPrompt = $('taskPrompt'), unitBadge = $('unitBadge');
+  const answerInput = $('answerInput'), feedback = $('feedback'), topicName = $('topicName');
+
+  function renderTask(task){
+    currentTask = task;
+    currentTopicId = task.topicId;
+    revealedSteps = 0;
+    const topic = TOPICS.find(t => t.id === task.topicId);
+    topicName.textContent = topic ? topic.label : '';
+    diagram.innerHTML = task.diagram || '';
+    taskPrompt.innerHTML = task.prompt;
+    unitBadge.textContent = task.unit;
+    answerInput.value = '';
+    feedback.textContent = '';
+    feedback.className = 'feedback';
+    updateTopicListActive();
+  }
+
+  function newRandomTask(){
+    const topic = pick(TOPICS);
+    renderTask(topic.gen());
+  }
+  function newSameTypeTask(){
+    const topic = TOPICS.find(t => t.id === currentTopicId) || pick(TOPICS);
+    renderTask(topic.gen());
+  }
+  function newTaskFor(topicId){
+    const topic = TOPICS.find(t => t.id === topicId);
+    if(topic) renderTask(topic.gen());
+    closeDrawer();
+  }
+
+  $('checkBtn').addEventListener('click', () => {
+    const val = parseInput(answerInput.value);
+    if(isNaN(val)){
+      feedback.textContent = 'Bitte gib eine Zahl ein.';
+      feedback.className = 'feedback bad';
+      return;
+    }
+    const correct = Math.abs(val - currentTask.answer) <= currentTask.tolerance;
+    if(correct){
+      feedback.textContent = `Richtig! ${fmt(currentTask.answer)} ${currentTask.unit} ✓`;
+      feedback.className = 'feedback ok';
+    } else {
+      feedback.textContent = 'Noch nicht richtig — versuch es nochmal oder schau dir den Lösungsweg an.';
+      feedback.className = 'feedback bad';
+    }
+  });
+  answerInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') $('checkBtn').click(); });
+
+  $('sameTypeBtn').addEventListener('click', newSameTypeTask);
+  $('randomBtn').addEventListener('click', newRandomTask);
+
+  /* ---------- Drawer ---------- */
+  const drawer = $('drawer'), backdrop = $('backdrop'), topicList = $('topicList');
+  TOPICS.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'topic-item';
+    btn.textContent = t.label;
+    btn.dataset.id = t.id;
+    btn.addEventListener('click', () => newTaskFor(t.id));
+    topicList.appendChild(btn);
+  });
+  function updateTopicListActive(){
+    [...topicList.children].forEach(b => b.classList.toggle('active', b.dataset.id === currentTopicId));
+  }
+  function openDrawer(){ drawer.classList.add('open'); backdrop.classList.add('show'); }
+  function closeDrawer(){ drawer.classList.remove('open'); backdrop.classList.remove('show'); }
+  $('burgerBtn').addEventListener('click', openDrawer);
+  backdrop.addEventListener('click', () => { closeDrawer(); closeAllOverlays(); });
+
+  /* ---------- Overlays (steps / calc / qr) ---------- */
+  function openOverlay(id){ $(id).classList.add('show'); }
+  function closeOverlay(id){ $(id).classList.remove('show'); }
+  function closeAllOverlays(){ ['stepsOverlay','calcOverlay','qrOverlay'].forEach(closeOverlay); }
+  document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeOverlay(b.dataset.close)));
+
+  const stepsList = $('stepsList'), revealBtn = $('revealBtn');
+  $('stepsBtn').addEventListener('click', () => {
+    revealedSteps = 0;
+    stepsList.innerHTML = '';
+    revealBtn.textContent = 'Nächster Schritt';
+    revealBtn.disabled = false;
+    openOverlay('stepsOverlay');
+  });
+  revealBtn.addEventListener('click', () => {
+    if(!currentTask) return;
+    if(revealedSteps < currentTask.steps.length){
+      const div = document.createElement('div');
+      div.className = 'step-line';
+      div.innerHTML = `<span class="num">${revealedSteps+1}.</span><span>${currentTask.steps[revealedSteps]}</span>`;
+      stepsList.appendChild(div);
+      revealedSteps++;
+      stepsList.scrollTop = stepsList.scrollHeight;
+    }
+    if(revealedSteps >= currentTask.steps.length){
+      revealBtn.textContent = 'Alle Schritte gezeigt';
+      revealBtn.disabled = true;
+    }
+  });
+
+  /* ---------- Calculator ---------- */
+  $('openCalc').addEventListener('click', () => { closeDrawer(); openOverlay('calcOverlay'); });
+  const calcDisplay = $('calcDisplay');
+  let calcExpr = '';
+  const CALC_KEYS = ['7','8','9','÷','4','5','6','×','1','2','3','−','0','.','=','+','C','⌫'];
+  const calcGrid = $('calcGrid');
+  CALC_KEYS.forEach(k => {
+    const btn = document.createElement('button');
+    btn.textContent = k;
+    if(['÷','×','−','+'].includes(k)) btn.classList.add('op');
+    if(k === '=') btn.classList.add('eq');
+    if(k === 'C') btn.classList.add('clear');
+    btn.addEventListener('click', () => handleCalcKey(k));
+    calcGrid.appendChild(btn);
+  });
+  function handleCalcKey(k){
+    if(k === 'C'){ calcExpr = ''; }
+    else if(k === '⌫'){ calcExpr = calcExpr.slice(0,-1); }
+    else if(k === '='){
+      try{
+        const safe = calcExpr.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+        if(!/^[0-9+\-*/.() ]+$/.test(safe)) throw new Error('invalid');
+        const result = Function('"use strict"; return (' + safe + ')')();
+        calcExpr = String(Math.round((result + Number.EPSILON) * 1e8) / 1e8).replace('.', ',');
+      } catch(e){ calcExpr = 'Fehler'; }
+    } else {
+      calcExpr += k;
+    }
+    calcDisplay.textContent = calcExpr === '' ? '0' : calcExpr;
+  }
+
+  /* ---------- QR code ---------- */
+  $('openQr').addEventListener('click', () => {
+    closeDrawer();
+    $('qrUrl').value = window.location.href;
+    openOverlay('qrOverlay');
+  });
+  $('qrGen').addEventListener('click', () => {
+    const box = $('qrBox');
+    box.innerHTML = '';
+    const url = $('qrUrl').value.trim();
+    if(!url){ box.innerHTML = '<span class="qr-hint">Bitte eine Adresse eingeben.</span>'; return; }
+    try{
+      if(typeof QRCode === 'undefined') throw new Error('lib missing');
+      new QRCode(box, { text:url, width:170, height:170, colorDark:'#0f2942', colorLight:'#ffffff' });
+    } catch(e){
+      box.innerHTML = '<span class="qr-hint">QR-Code konnte nicht erzeugt werden (Internetverbindung prüfen).</span>';
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape'){ closeDrawer(); closeAllOverlays(); }
+  });
+
+  /* ---------- Init ---------- */
+  newRandomTask();
+})();
+</script>
+</body>
+</html>
