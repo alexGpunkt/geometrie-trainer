@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Haus der Vierecke</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fbfcfa; --grid:#dde8f1; --card:#ffffff; --ink:#24303b; --muted:#5d6975; --soft:#eef3f7;
+  --eq:#2458d3; --par:#d27400; --right:#c0226a; --ok:#1d7f46; --bad:#b3261e; --focus:#2458d3;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#1b2320; --grid:#26312c; --card:#222c28; --ink:#e7ede9; --muted:#a6b2ac; --soft:#2d3833;
+    --eq:#8aacff; --par:#ffae45; --right:#ff7fb4; --ok:#6fd49a; --bad:#ff8a80; --focus:#8aacff;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#1b2320; --grid:#26312c; --card:#222c28; --ink:#e7ede9; --muted:#a6b2ac; --soft:#2d3833;
+  --eq:#8aacff; --par:#ffae45; --right:#ff7fb4; --ok:#6fd49a; --bad:#ff8a80; --focus:#8aacff;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; color:var(--ink); background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:22px 22px;
+  font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  font-size:1.0625rem; line-height:1.5;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:18px 16px 56px}
+h1{font-size:clamp(2.3rem,8vw,3.8rem);line-height:1;letter-spacing:-.025em;margin:.25em 0 .2em}
+.lead{margin:0 0 1.1rem;color:var(--muted);max-width:62ch}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+.modes{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border:2px solid var(--ink);border-radius:16px;background:var(--card);margin-bottom:18px}
+.modes button{border:0;background:transparent;border-radius:12px;padding:8px 16px;font-weight:700;min-height:42px;cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+
+.marks-label{margin:0 0 6px;font-size:.95rem;color:var(--muted)}
+.marks{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.mark{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:6px 12px 6px 8px;border:2px solid var(--ink);border-radius:10px;background:var(--card);cursor:pointer;font-size:.97rem;font-weight:700}
+.mark svg{width:30px;height:22px;flex:none}
+.mark[aria-pressed="false"]{opacity:.45;border-style:dashed}
+
+.ico-line{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round}
+
+.explore{display:grid;gap:22px}
+@media (min-width:900px){
+  .explore{grid-template-columns:minmax(0,500px) minmax(0,1fr);align-items:start}
+  .detail{position:sticky;top:16px}
+  .back{display:none}
+}
+
+.filter{background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:10px 14px;margin-bottom:12px}
+.filter summary{cursor:pointer;font-weight:700;min-height:30px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--ink);background:transparent;border-radius:999px;padding:6px 12px 6px 6px;min-height:40px;cursor:pointer;font-size:.93rem;text-align:left}
+.chip svg{width:26px;height:20px;flex:none}
+.chip[aria-pressed="true"]{background:var(--soft);box-shadow:inset 0 0 0 2px var(--ink)}
+.result{margin:.7rem 0 .2rem;font-weight:700}
+.linkbtn{border:0;background:none;padding:0;text-decoration:underline;cursor:pointer;color:var(--muted);font-size:.93rem}
+
+.house-svg{width:100%;height:auto;display:block}
+.house-line{fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
+.edge{stroke:var(--muted);stroke-width:1.6}
+.edge.on{stroke:var(--eq);stroke-width:3.2}
+.node{cursor:pointer}
+.node:focus{outline:none}
+.node rect{fill:var(--card);stroke:var(--ink);stroke-width:1.5}
+.node.anc rect{stroke:var(--eq);stroke-width:2.4;stroke-dasharray:6 3}
+.node.sel rect{stroke:var(--eq);stroke-width:4}
+.node:focus-visible rect{stroke:var(--focus);stroke-width:4;stroke-dasharray:none}
+.node.dim{opacity:.25}
+.node text{fill:var(--ink);font-weight:700;text-anchor:middle}
+
+.q-fill{fill:var(--soft)}
+.q-edge{fill:none;stroke:var(--ink);stroke-linejoin:round}
+.m-eq{stroke:var(--eq);fill:none;stroke-linecap:round}
+.m-par{stroke:var(--par);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.m-right{stroke:var(--right);fill:none;stroke-linejoin:round}
+.m-right-fill{fill:var(--right);opacity:.15}
+.m-dot{fill:var(--right)}
+.vlabel{fill:var(--muted);font-size:15px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+
+.card,.detail{background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:18px}
+.detail h2{font-size:1.8rem;line-height:1.1;margin:0 0 4px}
+.big{width:100%;max-width:440px;height:auto;display:block;margin:4px auto}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px}
+.btn{min-height:44px;padding:8px 16px;border:2px solid var(--ink);border-radius:10px;background:var(--ink);color:var(--card);font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.props{list-style:none;margin:8px 0 0;padding:0}
+.props li{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--grid)}
+.props li svg{width:32px;height:24px;margin-top:2px}
+.props li.none{color:var(--muted)}
+.props li.none svg{opacity:.4}
+.props strong{display:block}
+.note{margin:10px 0 0}
+.rel{border-top:2px solid var(--ink);margin-top:14px;padding-top:10px}
+.rel p{margin:.35rem 0}
+
+.quiz{max-width:640px}
+.q{font-weight:700;font-size:1.2rem;margin:0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.9rem;color:var(--muted);margin:0 0 12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend svg{width:26px;height:20px}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{min-height:54px;padding:8px;border:2px solid var(--ink);border-radius:10px;background:var(--card);font-weight:700;cursor:pointer;line-height:1.2}
+.opt:disabled{cursor:default}
+.opt.correct{border-color:var(--ok);box-shadow:inset 0 0 0 2px var(--ok);color:var(--ok)}
+.opt.wrong{border-color:var(--bad);box-shadow:inset 0 0 0 2px var(--bad);color:var(--bad)}
+.feedback{min-height:3.2em;margin:14px 0}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.score{color:var(--muted)}
+@media (max-width:420px){.options{grid-template-columns:1fr}}
+
+.stmts{max-width:720px}
+.stmts .intro{margin:0 0 4px}
+.stmts .intro-hint{margin:0 0 14px;color:var(--muted);font-size:.95rem}
+.slist{list-style:none;margin:0;padding:0;counter-reset:s}
+.slist>li{counter-increment:s;padding:14px 0;border-top:1px solid var(--grid)}
+.slist>li:first-child{border-top:0}
+.s-text{display:grid;grid-template-columns:2.2em 1fr;margin:0 0 8px;font-size:1.15rem;font-weight:700;line-height:1.35}
+.s-text::before{content:counter(s) ".";color:var(--muted)}
+.judge{display:flex;gap:8px;margin-left:2.2em;flex-wrap:wrap}
+.judge button{min-height:44px;min-width:120px;padding:6px 14px;border:2px solid var(--ink);border-radius:10px;background:transparent;font-weight:700;cursor:pointer}
+.judge button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.judge button:disabled{cursor:default}
+.slist.checked .judge button[aria-pressed="false"]{opacity:.45}
+.verdict{margin:10px 0 0 2.2em;font-weight:700}
+.verdict.ok{color:var(--ok)}
+.verdict.no{color:var(--bad)}
+.why{margin:6px 0 0 2.2em;display:grid;gap:10px;grid-template-columns:1fr}
+@media (min-width:560px){.why{grid-template-columns:170px 1fr;align-items:start}}
+.why svg{width:100%;max-width:220px;height:auto;background:var(--paper);border:1px solid var(--grid);border-radius:10px}
+.why p{margin:0 0 .35rem}
+.why ul{margin:.2rem 0 .4rem;padding-left:1.1rem}
+.s-foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;border-top:2px solid var(--ink);margin-top:10px;padding-top:14px}
+.s-result{font-weight:700;margin:0;flex:1 1 220px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Haus der Vierecke</h1>
+    <p class="lead">Jedes Viereck hat alle Eigenschaften der Vierecke, die über ihm liegen und mit ihm verbunden sind. Tippe ein Viereck an, um mehr darüber zu erfahren.</p>
+  </header>
+
+  <div class="modes" role="group" aria-label="Modus">
+    <button type="button" data-mode="explore" aria-pressed="true">Haus erkunden</button>
+    <button type="button" data-mode="quiz" aria-pressed="false">Vierecke benennen</button>
+    <button type="button" data-mode="stmt" aria-pressed="false">Aussagen prüfen</button>
+  </div>
+
+  <main>
+    <section id="explore">
+      <p class="marks-label">Markierungen ein- und ausblenden:</p>
+      <div class="marks" id="marks"></div>
+
+      <div class="explore">
+        <div>
+          <details class="filter">
+            <summary>Vierecke nach Eigenschaften finden</summary>
+            <div class="chips" id="chips"></div>
+            <p class="result" id="fResult">Wähle eine oder mehrere Eigenschaften.</p>
+            <button type="button" class="linkbtn" id="fClear" hidden>Auswahl löschen</button>
+          </details>
+          <svg class="house-svg" id="house" viewBox="-4 4 428 752" role="group" aria-label="Haus der Vierecke"></svg>
+        </div>
+
+        <section class="detail" id="detail">
+          <h2 id="dTitle"></h2>
+          <svg class="big" id="dSvg" viewBox="0 0 320 240" role="img" aria-labelledby="dTitle"></svg>
+          <div class="btns">
+            <button type="button" class="btn" id="btnNew">Andere Form zeigen</button>
+            <button type="button" class="btn ghost" id="btnReset" hidden>Grundform zeigen</button>
+          </div>
+          <ul class="props" id="dProps"></ul>
+          <p class="note" id="dNote"></p>
+          <div class="rel" id="dRel"></div>
+          <div class="btns"><button type="button" class="btn ghost back" id="btnBack">Zurück zum Haus</button></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="quiz" class="quiz" hidden>
+      <div class="card">
+        <p class="q">Wie heißt dieses Viereck? Wähle den genauesten Namen.</p>
+        <svg class="big" id="qSvg" viewBox="0 0 320 240" role="img" aria-label="Viereck mit Markierungen"></svg>
+        <div class="legend" id="qLegend"></div>
+        <div class="options" id="qOpts"></div>
+        <p class="feedback" id="qFb" aria-live="polite"></p>
+        <div class="foot">
+          <span class="score" id="qScore">Noch keine Aufgabe beantwortet.</span>
+          <button type="button" class="btn" id="qNext">Nächste Aufgabe</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="stmt" class="stmts" hidden>
+      <div class="card">
+        <p class="q intro">Stimmt die Aussage oder stimmt sie nicht?</p>
+        <p class="intro-hint">Bewerte zuerst alle Aussagen. Danach wertest du aus und siehst zu jeder Aussage eine Begründung.</p>
+        <ol class="slist" id="sList"></ol>
+        <div class="s-foot">
+          <p class="s-result" id="sResult" aria-live="polite"></p>
+          <button type="button" class="btn" id="sCheck">Auswerten</button>
+          <button type="button" class="btn ghost" id="sNew">Neue Aussagen</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+//GEO-START
+const V={
+  sub:(a,b)=>[a[0]-b[0],a[1]-b[1]], add:(a,b)=>[a[0]+b[0],a[1]+b[1]],
+  mul:(a,k)=>[a[0]*k,a[1]*k], len:a=>Math.hypot(a[0],a[1]),
+  dot:(a,b)=>a[0]*b[0]+a[1]*b[1], cross:(a,b)=>a[0]*b[1]-a[1]*b[0]
+};
+const unit=a=>{const l=V.len(a)||1;return [a[0]/l,a[1]/l]};
+
+/* Erkennt gleich lange Seiten, parallele Seiten und rechte Winkel direkt aus den Eckpunkten.
+   "amb" markiert Formen, die fast (aber nicht genau) eine Eigenschaft haben – die werden nicht verwendet. */
+function analyze(P){
+  const d=[0,1,2,3].map(i=>V.sub(P[(i+1)%4],P[i]));
+  const L=d.map(V.len), avg=(L[0]+L[1]+L[2]+L[3])/4;
+  let amb=false;
+  const par0=[0,1,2,3]; const find=i=>par0[i]===i?i:(par0[i]=find(par0[i]));
+  for(let i=0;i<4;i++)for(let j=i+1;j<4;j++){
+    const r=Math.abs(L[i]-L[j])/avg;
+    if(r<0.01) par0[find(j)]=find(i); else if(r<0.08) amb=true;
+  }
+  const gm={}; for(let i=0;i<4;i++){const k=find(i); if(!gm[k]) gm[k]=[]; gm[k].push(i);}
+  const groups=Object.values(gm).filter(g=>g.length>1).sort((a,b)=>a[0]-b[0]);
+  const eqGroup=[-1,-1,-1,-1]; groups.forEach((g,k)=>g.forEach(i=>eqGroup[i]=k));
+  const par=[], parIdx=[-1,-1,-1,-1];
+  [[0,2],[1,3]].forEach(([i,j])=>{
+    const s=Math.abs(V.cross(unit(d[i]),unit(d[j])));
+    if(s<0.01){parIdx[i]=parIdx[j]=par.length; par.push([i,j]);} else if(s<0.12) amb=true;
+  });
+  const right=[];
+  for(let i=0;i<4;i++){
+    const u1=unit(V.sub(P[(i+3)%4],P[i])), u2=unit(V.sub(P[(i+1)%4],P[i]));
+    const c=Math.abs(V.dot(u1,u2));
+    if(c<0.01) right.push(i); else if(c<0.14) amb=true;
+  }
+  let sg=0, convex=true;
+  for(let i=0;i<4;i++){
+    const c=V.cross(d[i],d[(i+1)%4]);
+    if(Math.abs(c)<1e-9){convex=false;continue}
+    const s=Math.sign(c); if(!sg) sg=s; else if(s!==sg) convex=false;
+  }
+  return {d,L,groups,eqGroup,par,parIdx,right,amb,convex};
+}
+
+function classify(an){
+  const np=an.par.length, nr=an.right.length, g=an.groups;
+  const all4=g.length===1&&g[0].length===4;
+  const opp=g.length===2&&g.every(m=>m.length===2&&m[1]-m[0]===2);
+  if(np===2){
+    if(all4&&nr===4) return 'quadrat';
+    if(opp&&nr===4) return 'rechteck';
+    if(all4&&nr===0) return 'raute';
+    if(opp&&nr===0) return 'parallelogramm';
+    return null;
+  }
+  if(nr>0) return null;
+  if(np===1){
+    const legs=an.par[0][0]===0?[1,3]:[0,2];
+    if(g.length===0) return 'trapez';
+    if(g.length===1&&g[0].length===2&&g[0][0]===legs[0]&&g[0][1]===legs[1]) return 'gltrapez';
+    return null;
+  }
+  if(g.length===0) return 'viereck';
+  if(g.length===2&&g.every(m=>m.length===2&&(m[1]-m[0]===1||(m[0]===0&&m[1]===3)))) return 'drachen';
+  return null;
+}
+
+const lerp=(a,b,t)=>a+(b-a)*t, RAD=Math.PI/180;
+const GEN={
+  viereck:r=>[225,315,45,135].map(dg=>{const a=(dg+lerp(-25,25,r()))*RAD,q=lerp(.6,1.2,r());return [Math.cos(a)*q,Math.sin(a)*q]}),
+  trapez:r=>{const top=lerp(.6,.95,r()),h=lerp(.7,.9,r()),sh=lerp(.18,.4,r())*(r()<.5?-1:1),cx=.8+sh;return [[0,0],[1.6,0],[cx+top/2,h],[cx-top/2,h]]},
+  drachen:r=>{const w=lerp(.6,.8,r()),t=lerp(.35,.55,r()),b=lerp(1,1.35,r());return [[0,-b],[w,0],[0,t],[-w,0]]},
+  gltrapez:r=>{const top=lerp(.55,.8,r()),h=lerp(.75,.95,r());return [[0,0],[1.6,0],[.8+top/2,h],[.8-top/2,h]]},
+  parallelogramm:r=>{const a=lerp(55,72,r())*RAD,b=lerp(.5,.72,r());return [[0,0],[1.3,0],[1.3+Math.cos(a)*b,Math.sin(a)*b],[Math.cos(a)*b,Math.sin(a)*b]]},
+  rechteck:r=>{const w=lerp(1.45,2.1,r());return [[0,0],[w,0],[w,1],[0,1]]},
+  raute:r=>{const a=lerp(52,72,r())*RAD,c=Math.cos(a),s=Math.sin(a);return [[0,0],[1,0],[1+c,s],[c,s]]},
+  quadrat:()=>[[0,0],[1,0],[1,1],[0,1]]
+};
+function rotate(P,deg){const a=deg*RAD,c=Math.cos(a),s=Math.sin(a);return P.map(p=>[p[0]*c-p[1]*s,p[0]*s+p[1]*c])}
+function make(type,rng,rot){
+  for(let k=0;k<4000;k++){
+    const P=GEN[type](rng); const an=analyze(P);
+    if(an.convex&&!an.amb&&classify(an)===type) return rot?rotate(P,rot):P;
+  }
+  return GEN[type](()=>.5);
+}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+//GEO-END
+
+const ORDER=['viereck','trapez','drachen','gltrapez','parallelogramm','rechteck','raute','quadrat'];
+const S_PAR1='Mindestens ein Paar gegenüberliegender Seiten ist parallel.';
+const S_PAR2='Beide Paare gegenüberliegender Seiten sind parallel.';
+const S_OPP='Gegenüberliegende Seiten sind gleich lang.';
+const S_ALL='Alle vier Seiten sind gleich lang.';
+const S_R4='Alle vier Winkel sind rechte Winkel (90°).';
+const TYPES={
+  viereck:{name:'Viereck',art:'ein',label:['Viereck'],x:210,y:128,props:[],st:{},note:'Vier Ecken, vier Seiten. Die Innenwinkel ergeben zusammen 360°.'},
+  trapez:{name:'Trapez',art:'ein',label:['Trapez'],x:120,y:262,props:['p1'],st:{par:S_PAR1}},
+  drachen:{name:'Drachenviereck',art:'ein',label:['Drachenviereck'],x:300,y:262,props:['eAdj'],st:{eq:'Je zwei benachbarte Seiten sind gleich lang.'},note:'Eine Diagonale ist Symmetrieachse.'},
+  gltrapez:{name:'gleichschenkliges Trapez',art:'ein',label:['gleichschenkliges','Trapez'],x:72,y:394,props:['p1'],st:{par:S_PAR1,eq:'Die beiden Schenkel sind gleich lang.'},note:'Es ist achsensymmetrisch: Die Winkel an einer Grundseite sind gleich groß.'},
+  parallelogramm:{name:'Parallelogramm',art:'ein',label:['Parallelogramm'],x:210,y:394,props:['p1','p2','eOpp'],st:{par:S_PAR2,eq:S_OPP}},
+  rechteck:{name:'Rechteck',art:'ein',label:['Rechteck'],x:120,y:526,props:['p1','p2','eOpp','r4'],st:{par:S_PAR2,eq:S_OPP,right:S_R4}},
+  raute:{name:'Raute',art:'eine',label:['Raute'],x:300,y:526,props:['p1','p2','eOpp','eAdj','e4'],st:{par:S_PAR2,eq:S_ALL}},
+  quadrat:{name:'Quadrat',art:'ein',label:['Quadrat'],x:210,y:658,props:['p1','p2','eOpp','eAdj','e4','r4'],st:{par:S_PAR2,eq:S_ALL,right:S_R4}}
+};
+Object.entries({"viereck": {"jede": "Jedes Viereck", "kein": "kein Viereck", "dies": "Dieses Viereck"}, "trapez": {"jede": "Jedes Trapez", "kein": "kein Trapez", "dies": "Dieses Trapez"}, "drachen": {"jede": "Jedes Drachenviereck", "kein": "kein Drachenviereck", "dies": "Dieses Drachenviereck"}, "gltrapez": {"jede": "Jedes gleichschenklige Trapez", "kein": "kein gleichschenkliges Trapez", "dies": "Dieses gleichschenklige Trapez"}, "parallelogramm": {"jede": "Jedes Parallelogramm", "kein": "kein Parallelogramm", "dies": "Dieses Parallelogramm"}, "rechteck": {"jede": "Jedes Rechteck", "kein": "kein Rechteck", "dies": "Dieses Rechteck"}, "raute": {"jede": "Jede Raute", "kein": "keine Raute", "dies": "Diese Raute"}, "quadrat": {"jede": "Jedes Quadrat", "kein": "kein Quadrat", "dies": "Dieses Quadrat"}}).forEach(([k,v])=>Object.assign(TYPES[k],v));
+TYPES.gltrapez.extra='Außerdem ist es achsensymmetrisch.';
+const EDGES=[['viereck','trapez'],['viereck','drachen'],['trapez','gltrapez'],['trapez','parallelogramm'],['drachen','raute'],['gltrapez','rechteck'],['parallelogramm','rechteck'],['parallelogramm','raute'],['rechteck','quadrat'],['raute','quadrat']];
+function walk(t,dir){const s=new Set(),st=[t];while(st.length){const c=st.pop();EDGES.forEach(e=>{if(e[dir?0:1]===c){const n=e[dir?1:0];if(!s.has(n)){s.add(n);st.push(n)}}})}return s}
+const ancestors=t=>walk(t,false), descendants=t=>walk(t,true);
+const byNear=arr=>[...arr].sort((a,b)=>ORDER.indexOf(b)-ORDER.indexOf(a));
+const withArt=t=>`${TYPES[t].art} ${TYPES[t].name}`;
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const joinDe=a=>a.length<2?a.join(''):a.slice(0,-1).join(', ')+' und '+a[a.length-1];
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+
+const CANON={}; ORDER.forEach((t,i)=>CANON[t]=make(t,mulberry32(11+i*37),0));
+
+/* Zeichnen */
+const f=n=>n.toFixed(1), pt=p=>`${f(p[0])},${f(p[1])}`;
+function fit(P,b){
+  const xs=P.map(p=>p[0]), ys=P.map(p=>-p[1]);
+  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  const k=Math.min(b.w/(x1-x0),b.h/(y1-y0));
+  const ox=b.x+(b.w-(x1-x0)*k)/2-x0*k, oy=b.y+(b.h-(y1-y0)*k)/2-y0*k;
+  return P.map(p=>[p[0]*k+ox,-p[1]*k+oy]);
+}
+function quadSVG(S,o){
+  const sc=o.scale, show=o.show, an=analyze(S), poly=S.map(pt).join(' ');
+  let h=`<polygon class="q-fill" points="${poly}"/>`;
+  if(show.right) an.right.forEach(i=>{
+    const V0=S[i], u1=unit(V.sub(S[(i+3)%4],V0)), u2=unit(V.sub(S[(i+1)%4],V0));
+    const q=Math.min(14*sc,.3*Math.min(an.L[i],an.L[(i+3)%4]));
+    const a=V.add(V0,V.mul(u1,q)), b=V.add(a,V.mul(u2,q)), c=V.add(V0,V.mul(u2,q)), m=V.add(V0,V.mul(V.add(u1,u2),q*.5));
+    h+=`<path class="m-right-fill" d="M${pt(V0)}L${pt(a)}L${pt(b)}L${pt(c)}Z"/><path class="m-right" stroke-width="${f(1.8*sc)}" d="M${pt(a)}L${pt(b)}L${pt(c)}"/><circle class="m-dot" cx="${f(m[0])}" cy="${f(m[1])}" r="${f(1.7*sc)}"/>`;
+  });
+  h+=`<polygon class="q-edge" stroke-width="${f(2.2*sc)}" points="${poly}"/>`;
+  for(let i=0;i<4;i++){
+    const A=S[i], u=unit(an.d[i]), n=[-u[1],u[0]];
+    const hasEq=show.eq&&an.eqGroup[i]>=0, hasPar=show.par&&an.parIdx[i]>=0;
+    if(hasEq){
+      const cnt=an.eqGroup[i]+1, M=V.add(A,V.mul(an.d[i],hasPar?.34:.5)), gap=4.5*sc, hl=6.5*sc;
+      let dd=''; for(let k=0;k<cnt;k++){const P0=V.add(M,V.mul(u,(k-(cnt-1)/2)*gap)); dd+=`M${pt(V.add(P0,V.mul(n,hl)))}L${pt(V.sub(P0,V.mul(n,hl)))}`}
+      h+=`<path class="m-eq" stroke-width="${f(2.1*sc)}" d="${dd}"/>`;
+    }
+    if(hasPar){
+      const pi=an.parIdx[i], ref=unit(an.d[an.par[pi][0]]), dir=V.dot(ref,u)<0?V.mul(u,-1):u, nn=[-dir[1],dir[0]];
+      const cnt=pi+1, M=V.add(A,V.mul(an.d[i],hasEq?.66:.5)), gap=5*sc, k0=5.5*sc;
+      let dd=''; for(let k=0;k<cnt;k++){const tip=V.add(M,V.mul(dir,(k-(cnt-1)/2)*gap+k0/2)), back=V.sub(tip,V.mul(dir,k0)); dd+=`M${pt(V.add(back,V.mul(nn,k0)))}L${pt(tip)}L${pt(V.sub(back,V.mul(nn,k0)))}`}
+      h+=`<path class="m-par" stroke-width="${f(2.1*sc)}" d="${dd}"/>`;
+    }
+  }
+  if(o.labels){
+    const C=S.reduce((a,p)=>[a[0]+p[0]/4,a[1]+p[1]/4],[0,0]);
+    'ABCD'.split('').forEach((ch,i)=>{const p=V.add(S[i],V.mul(unit(V.sub(S[i],C)),17));h+=`<text class="vlabel" x="${f(p[0])}" y="${f(p[1])}">${ch}</text>`});
+  }
+  return h;
+}
+const ICON={
+  eq:`<svg viewBox="0 0 30 22" aria-hidden="true"><path class="ico-line" d="M3 11H27"/><path class="m-eq" stroke-width="2.2" d="M12.5 5V17M17.5 5V17"/></svg>`,
+  par:`<svg viewBox="0 0 30 22" aria-hidden="true"><path class="ico-line" d="M3 6H27M3 16H27"/><path class="m-par" stroke-width="2.2" d="M12 2.5L16 6L12 9.5M12 12.5L16 16L12 19.5"/></svg>`,
+  right:`<svg viewBox="0 0 30 22" aria-hidden="true"><path class="m-right-fill" d="M6 19H15V10H6Z"/><path class="ico-line" d="M6 19H27M6 19V2"/><path class="m-right" stroke-width="2" d="M15 19V10H6"/><circle class="m-dot" cx="10.5" cy="14.5" r="1.6"/></svg>`
+};
+const MARKS=[['eq','gleich lange Seiten'],['par','parallele Seiten'],['right','rechte Winkel']];
+const FILTERS=[['p1','mindestens 1 Paar parallele Seiten','par'],['p2','2 Paare parallele Seiten','par'],['eOpp','gegenüberliegende Seiten gleich lang','eq'],['eAdj','je zwei benachbarte Seiten gleich lang','eq'],['e4','alle 4 Seiten gleich lang','eq'],['r4','4 rechte Winkel','right']];
+
+const state={mode:'explore',sel:'rechteck',custom:null,show:{eq:true,par:true,right:true},filters:new Set()};
+const $=id=>document.getElementById(id);
+
+function matches(){
+  if(!state.filters.size) return null;
+  return new Set(ORDER.filter(t=>[...state.filters].every(k=>TYPES[t].props.includes(k))));
+}
+function renderHouse(){
+  const sel=state.sel, anc=ancestors(sel), m=matches();
+  let h=`<path class="house-line" d="M0 204L210 12L420 204M6 198.5V744M414 198.5V744M-2 744H422M310 103.4V58H336V127.2"/>`;
+  EDGES.forEach(([p,c])=>{
+    const P=TYPES[p],C=TYPES[c], on=(c===sel||anc.has(c))&&anc.has(p);
+    h+=`<line class="edge${on?' on':''}" x1="${P.x}" y1="${P.y+62}" x2="${C.x}" y2="${C.y-46}"/>`;
+  });
+  ORDER.forEach(t=>{
+    const T=TYPES[t], S=fit(CANON[t],{x:T.x-46,y:T.y-38,w:92,h:56});
+    const cls=['node',t===sel?'sel':'',anc.has(t)?'anc':'',m&&!m.has(t)?'dim':''].join(' ').trim();
+    const ly=T.label.length>1?[33,47]:[41];
+    h+=`<g class="${cls}" data-t="${t}" tabindex="0" role="button" aria-pressed="${t===sel}" aria-label="${T.name}"><rect x="${T.x-58}" y="${T.y-46}" width="116" height="108" rx="10"/>${quadSVG(S,{scale:.62,show:state.show})}${T.label.map((l,i)=>`<text x="${T.x}" y="${T.y+ly[i]}" style="font-size:${l.length>15?11:12.5}px">${l}</text>`).join('')}</g>`;
+  });
+  $('house').innerHTML=h;
+}
+function renderDetail(){
+  const t=state.sel, T=TYPES[t];
+  $('dTitle').textContent=T.name;
+  $('dSvg').innerHTML=quadSVG(fit(state.custom||CANON[t],{x:44,y:30,w:232,h:176}),{scale:1.25,show:state.show,labels:true});
+  $('btnReset').hidden=!state.custom;
+  $('dProps').innerHTML=[['par','Parallele Seiten'],['eq','Gleich lange Seiten'],['right','Rechte Winkel']].map(([k,lab])=>{
+    const s=T.st[k];
+    return `<li class="${s?'':'none'}">${ICON[k]}<div><strong>${lab}</strong>${s||'Keine Bedingung.'}</div></li>`;
+  }).join('');
+  $('dNote').textContent=T.note||'';
+  $('dNote').hidden=!T.note;
+  const anc=byNear(ancestors(t)), des=byNear(descendants(t)).reverse();
+  let r='';
+  r+= anc.length?`<p>${cap(withArt(t))} ist auch ${joinDe(anc.map(withArt))}.</p>`:`<p>Alle anderen Vierecke im Haus sind besondere Vierecke.</p>`;
+  r+= des.length?`<p>Besondere Formen davon: ${joinDe(des.map(x=>TYPES[x].name))}.</p>`:`<p>Das Quadrat steht ganz unten: Es hat alle Eigenschaften der Vierecke darüber.</p>`;
+  $('dRel').innerHTML=r;
+}
+function renderFilter(){
+  document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',state.filters.has(c.dataset.k)));
+  const m=matches();
+  $('fClear').hidden=!m;
+  if(!m) $('fResult').textContent='Wähle eine oder mehrere Eigenschaften.';
+  else if(!m.size) $('fResult').textContent='Kein Viereck im Haus hat alle ausgewählten Eigenschaften.';
+  else $('fResult').textContent='Passend: '+joinDe(ORDER.filter(t=>m.has(t)).map(t=>TYPES[t].name));
+}
+function renderAll(){renderHouse();renderDetail();renderFilter()}
+
+function select(t,fromUser){
+  state.sel=t; state.custom=null; renderAll();
+  const n=$('house').querySelector(`[data-t="${t}"]`); if(n) n.focus({preventScroll:true});
+  if(fromUser&&window.innerWidth<900){
+    const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    $('detail').scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});
+  }
+}
+
+/* Aufbau der Bedienelemente */
+$('marks').innerHTML=MARKS.map(([k,l])=>`<button type="button" class="mark" data-k="${k}" aria-pressed="true">${ICON[k]}${l}</button>`).join('');
+$('marks').addEventListener('click',e=>{
+  const b=e.target.closest('.mark'); if(!b) return;
+  const k=b.dataset.k; state.show[k]=!state.show[k]; b.setAttribute('aria-pressed',state.show[k]);
+  renderHouse(); renderDetail();
+});
+$('chips').innerHTML=FILTERS.map(([k,l,ic])=>`<button type="button" class="chip" data-k="${k}" aria-pressed="false">${ICON[ic]}${l}</button>`).join('');
+$('chips').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  const k=b.dataset.k; state.filters.has(k)?state.filters.delete(k):state.filters.add(k);
+  renderHouse(); renderFilter();
+});
+$('fClear').addEventListener('click',()=>{state.filters.clear();renderHouse();renderFilter()});
+$('house').addEventListener('click',e=>{const n=e.target.closest('.node'); if(n) select(n.dataset.t,true)});
+$('house').addEventListener('keydown',e=>{
+  const n=e.target.closest('.node'); if(!n) return;
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();select(n.dataset.t,true)}
+});
+$('btnNew').addEventListener('click',()=>{state.custom=make(state.sel,Math.random,lerp(-35,35,Math.random()));renderDetail()});
+$('btnReset').addEventListener('click',()=>{state.custom=null;renderDetail()});
+$('btnBack').addEventListener('click',()=>{$('house').scrollIntoView({block:'start'}); const n=$('house').querySelector(`[data-t="${state.sel}"]`); if(n) n.focus({preventScroll:true})});
+
+function setMode(mode){
+  state.mode=mode;
+  document.querySelectorAll('.modes button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.mode===mode));
+  $('explore').hidden=mode!=='explore';
+  $('quiz').hidden=mode!=='quiz';
+  $('stmt').hidden=mode!=='stmt';
+  if(mode==='quiz'&&!quiz.type) newQuestion();
+  if(mode==='stmt'&&!stm.items.length) newStatements();
+}
+document.querySelectorAll('.modes button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+
+/* Üben */
+const quiz={score:0,total:0,type:null};
+$('qLegend').innerHTML=MARKS.map(([k,l])=>`<span>${ICON[k]}${l}</span>`).join('');
+function newQuestion(){
+  const t=ORDER[Math.floor(Math.random()*ORDER.length)];
+  quiz.type=t; quiz.answered=false;
+  quiz.P=make(t,Math.random,Math.random()*360);
+  const rel=[...ancestors(t),...descendants(t)];
+  const others=ORDER.filter(x=>x!==t&&!rel.includes(x));
+  quiz.opts=shuffle([t,...[...shuffle(rel),...shuffle(others)].slice(0,3)]);
+  $('qSvg').innerHTML=quadSVG(fit(quiz.P,{x:40,y:24,w:240,h:192}),{scale:1.25,show:{eq:true,par:true,right:true}});
+  $('qOpts').innerHTML=quiz.opts.map(o=>`<button type="button" class="opt" data-o="${o}">${TYPES[o].name}</button>`).join('');
+  $('qFb').textContent='';
+}
+$('qOpts').addEventListener('click',e=>{
+  const b=e.target.closest('.opt'); if(!b||quiz.answered) return;
+  quiz.answered=true; quiz.total++;
+  const c=b.dataset.o, t=quiz.type, T=TYPES[t];
+  const hint=Object.values(T.st).length?'Achte auf die Markierungen: '+Object.values(T.st).join(' '):'Es gibt keine gleich langen Seiten, keine parallelen Seiten und keine rechten Winkel.';
+  let fb;
+  if(c===t){
+    quiz.score++;
+    const anc=byNear(ancestors(t));
+    fb=`Richtig! Das ist ${withArt(t)}.`+(anc.length?` ${cap(withArt(t))} ist auch ${joinDe(anc.map(withArt))}.`:'');
+  } else if(ancestors(t).has(c)){
+    fb=`Das stimmt auch, aber es geht genauer: Das ist ${withArt(t)}. ${hint}`;
+  } else {
+    fb=`Nicht ganz. Das ist ${withArt(t)}. ${hint}`;
+  }
+  document.querySelectorAll('.opt').forEach(o=>{
+    o.disabled=true;
+    if(o.dataset.o===t) o.classList.add('correct');
+    else if(o===b) o.classList.add('wrong');
+  });
+  $('qFb').textContent=fb;
+  $('qScore').textContent=`Richtig: ${quiz.score} von ${quiz.total}`;
+  $('qNext').focus();
+});
+$('qNext').addEventListener('click',newQuestion);
+
+/* Aussagen prüfen: „Jedes … ist auch ein …“ */
+const S_COUNT=8;
+const stm={items:[],checked:false};
+function newStatements(){
+  const trueP=[],revP=[],othP=[];
+  ORDER.forEach(x=>ORDER.forEach(y=>{
+    if(x===y) return;
+    if(ancestors(x).has(y)) trueP.push([x,y]);
+    else if(descendants(x).has(y)) revP.push([x,y]);
+    else othP.push([x,y]);
+  }));
+  const nTrue=3+Math.floor(Math.random()*3);
+  const picks=[], cx={}, cy={};
+  const take=(pool,n,cond=()=>true)=>{
+    let k=0;
+    for(const p of shuffle(pool)){
+      if(k>=n) break;
+      if((cx[p[0]]||0)>=2||(cy[p[1]]||0)>=2||!cond(p)) continue;
+      picks.push(p); cx[p[0]]=(cx[p[0]]||0)+1; cy[p[1]]=(cy[p[1]]||0)+1; k++;
+    }
+  };
+  take(trueP.filter(p=>p[1]==='viereck'),Math.random()<.5?1:0);
+  take(trueP.filter(p=>p[1]!=='viereck'),nTrue-picks.length);
+  const nFalse=S_COUNT-picks.length, nRev=Math.round(nFalse*.65);
+  take(revP.filter(p=>p[0]!=='viereck'||Math.random()<.4),nRev);
+  take(othP,S_COUNT-picks.length);
+  take(revP,S_COUNT-picks.length);
+  stm.items=shuffle(picks).map(([x,y])=>({x,y,truth:ancestors(x).has(y),answer:null,P:make(x,Math.random,lerp(-30,30,Math.random()))}));
+  stm.checked=false;
+  $('sResult').textContent='';
+  $('sCheck').hidden=false;
+  renderStatements();
+}
+function explainStatement(it){
+  const X=TYPES[it.x], Y=TYPES[it.y];
+  const req=Object.values(Y.st).concat(Y.extra?[Y.extra]:[]);
+  const list=`<ul>${req.map(r=>`<li>${r}</li>`).join('')}</ul>`;
+  if(it.truth){
+    if(it.y==='viereck') return `<p>${X.jede} hat vier Ecken und vier Seiten. Mehr braucht ein Viereck nicht.</p>`;
+    return `<p>${X.jede} hat alles, was ${withArt(it.y)} braucht:</p>${list}`;
+  }
+  return `<p>Gegenbeispiel: ${X.dies} ist ${Y.kein}.</p><p>${cap(withArt(it.y))} braucht:</p>${list}`;
+}
+function renderStatements(focusSel){
+  const el=$('sList');
+  el.classList.toggle('checked',stm.checked);
+  el.innerHTML=stm.items.map((it,i)=>{
+    const X=TYPES[it.x];
+    let h=`<li><p class="s-text"><span>${X.jede} ist auch ${withArt(it.y)}.</span></p>`;
+    h+=`<div class="judge" role="group" aria-label="Aussage ${i+1} bewerten">`+
+      [[true,'stimmt'],[false,'stimmt nicht']].map(([v,l])=>`<button type="button" data-i="${i}" data-v="${v}" aria-pressed="${it.answer===v}"${stm.checked?' disabled':''}>${l}</button>`).join('')+`</div>`;
+    if(stm.checked){
+      const ok=it.answer===it.truth;
+      const S=fit(it.P,{x:30,y:24,w:160,h:118});
+      h+=`<p class="verdict ${ok?'ok':'no'}">${ok?'✓ Richtig bewertet.':'✗ Falsch bewertet.'} Die Aussage ${it.truth?'stimmt':'stimmt nicht'}.</p>`;
+      h+=`<div class="why"><svg viewBox="0 0 220 166" role="img" aria-label="${X.name} mit Markierungen">${quadSVG(S,{scale:.95,show:{eq:true,par:true,right:true}})}</svg><div>${explainStatement(it)}<button type="button" class="linkbtn" data-show="${it.x}">${X.name} im Haus zeigen</button></div></div>`;
+    }
+    return h+'</li>';
+  }).join('');
+  if(focusSel){const b=el.querySelector(focusSel); if(b) b.focus();}
+}
+$('sList').addEventListener('click',e=>{
+  const show=e.target.closest('[data-show]');
+  if(show){ setMode('explore'); select(show.dataset.show,false); $('house').scrollIntoView({block:'start'}); return; }
+  const b=e.target.closest('.judge button'); if(!b||stm.checked) return;
+  const i=+b.dataset.i; stm.items[i].answer=b.dataset.v==='true';
+  renderStatements(`[data-i="${i}"][data-v="${b.dataset.v}"]`);
+  if($('sResult').textContent) $('sResult').textContent='';
+});
+$('sCheck').addEventListener('click',()=>{
+  const open=stm.items.filter(it=>it.answer===null).length;
+  if(open){ $('sResult').textContent=open===1?'Noch 1 Aussage ist nicht bewertet.':`Noch ${open} Aussagen sind nicht bewertet.`; return; }
+  stm.checked=true;
+  const score=stm.items.filter(it=>it.answer===it.truth).length;
+  $('sResult').textContent=`${score} von ${stm.items.length} Aussagen richtig bewertet.`;
+  $('sCheck').hidden=true;
+  renderStatements();
+});
+$('sNew').addEventListener('click',()=>{ newStatements(); $('stmt').scrollIntoView({block:'start'}); });
+
+renderAll();
+</script>
+</body>
+</html>
