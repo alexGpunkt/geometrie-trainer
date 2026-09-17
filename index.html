@@ -185,7 +185,15 @@
   }
   .topic-item.active{ border-color:var(--amber); color:var(--amber); }
   .drawer .tools{ display:flex; flex-direction:column; gap:6px; margin-top:auto; }
-  .drawer .tools button{ text-align:left; background:var(--panel-2); border:1px solid var(--line); color:var(--ink); }
+  .drawer .tools button,
+  .drawer .tools .drawer-link{
+    text-align:left; background:var(--panel-2); border:1px solid var(--line); color:var(--ink);
+  }
+  .drawer .tools .drawer-link{
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:.9rem;
+    border-radius:8px; padding:11px 10px; text-decoration:none;
+  }
+  .drawer .tools .drawer-link:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
 
   /* ---------- Overlays ---------- */
   .overlay{
@@ -289,6 +297,8 @@
   <h2>Themen wählen</h2>
   <div class="topic-list" id="topicList"></div>
   <div class="tools">
+    <h2>Weitere Anwendung</h2>
+    <a class="drawer-link" href="haus-der-vierecke.html">▱ Haus der Vierecke</a>
     <h2>Werkzeuge</h2>
     <button id="openCalc">🧮 Taschenrechner</button>
     <button id="openQr">▦ QR-Code zur Website</button>
